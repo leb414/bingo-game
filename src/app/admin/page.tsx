@@ -158,15 +158,22 @@ export default function AdminPage() {
         <>
           <div className="mt-6 w-full max-w-2xl mx-auto">
             <h2 className="text-2xl font-bold mb-4">Called Numbers</h2>
-            <div className="flex flex-wrap gap-2">
-              {calledNumbers.map((n, i) => (
-                <span
-                  key={i}
-                  className="px-2 py-1 bg-blue-500 text-white rounded"
-                >
-                  {n}
-                </span>
-              ))}
+            <div className="grid grid-cols-10 gap-2">
+              {Array.from({ length: 75 }, (_, i) => i + 1).map((num) => {
+                const isCalled = calledNumbers.includes(num);
+                return (
+                  <span
+                    key={num}
+                    className={`px-3 py-2 text-sm font-medium text-center rounded ${
+                      isCalled
+                        ? 'bg-gray-700 text-white'
+                        : 'bg-gray-200 text-gray-800'
+                    }`}
+                  >
+                    {num}
+                  </span>
+                );
+              })}
             </div>
           </div>
         </>
