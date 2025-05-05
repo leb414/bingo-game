@@ -6,12 +6,12 @@ interface Props {
 export default function BingoCard({ numbers, called }: Props) {
   const flattened = numbers.flat();
 
-  const totalCells = flattened.length;
+  const centerIndex = 12;
   const matched = flattened.filter(
-    (num, i) => num === 0 || called.includes(num)
+    (num, i) => i !== centerIndex && called.includes(num)
   ).length;
 
-  const progress = Math.round((matched / totalCells) * 100);
+  const progress = matched > 0 ? Math.round(((matched + 1) / 25) * 100) : 0;
 
   return (
     <div className="relative grid grid-cols-5 gap-1 w-[260px] text-center border p-2 rounded bg-white shadow">
@@ -22,7 +22,7 @@ export default function BingoCard({ numbers, called }: Props) {
       ))}
 
       {flattened.map((num, i) => {
-        const isCenter = i === 12;
+        const isCenter = i === centerIndex;
         const isMarked = num === 0 || called.includes(num);
 
         return (
