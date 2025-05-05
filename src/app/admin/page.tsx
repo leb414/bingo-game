@@ -98,6 +98,30 @@ export default function AdminPage() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!started || isGameEnded) return;
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+
+    const handlePopState = () => {
+      alert('You cannot leave the game while it is in progress.');
+      window.history.pushState(null, '', window.location.href);
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('popstate', handlePopState);
+
+    window.history.pushState(null, '', window.location.href);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [started, isGameEnded]);
+
   const handleBack = () => {
     socket.emit('reset-game');
 
