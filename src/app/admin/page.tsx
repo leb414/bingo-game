@@ -24,6 +24,7 @@ export default function AdminPage() {
   const [showDialog, setShowDialog] = useState(false);
   const [winners, setWinners] = useState<string[]>([]);
   const [isGameEnded, setIsGameEnded] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
 
   const startGame = () => {
     socket.emit('start-game');
@@ -33,6 +34,16 @@ export default function AdminPage() {
   const stopGame = () => {
     socket.emit('end-game');
     setStarted(false);
+  };
+
+  const pauseGame = () => {
+    socket.emit('pause-game');
+    setIsPaused(true);
+  };
+
+  const resumeGame = () => {
+    socket.emit('resume-game');
+    setIsPaused(false);
   };
 
   useEffect(() => {
@@ -116,7 +127,28 @@ export default function AdminPage() {
 
       {started && (
         <>
-          <p className="mt-4">Game in progress... live view soon</p>
+          <p className="mt-4">
+            {isPaused
+              ? 'Game is paused...'
+              : 'Game in progress... live view soon'}
+          </p>
+
+          {isPaused ? (
+            <Button
+              className="mt-2 bg-yellow-500 hover:bg-yellow-600"
+              onClick={resumeGame}
+            >
+              Resume Game
+            </Button>
+          ) : (
+            <Button
+              className="mt-2 bg-yellow-500 hover:bg-yellow-600"
+              onClick={pauseGame}
+            >
+              Pause Game
+            </Button>
+          )}
+
           <Button
             className="mt-2 bg-red-600 hover:bg-red-700"
             onClick={stopGame}

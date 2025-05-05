@@ -33,12 +33,10 @@ export default function PlayerGame() {
   const count = parseInt(searchParams.get('cards') || '1');
   const [cards, setCards] = useState<number[][][]>([]);
   const [calledNumbers, setCalledNumbers] = useState<number[]>([]);
-  const [countdown, setCountdown] = useState(3);
   const [gameStarted, setGameStarted] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
   const [nickname, setNickname] = useState('');
   const [winners, setWinners] = useState<string[]>([]);
-  const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const [isGameEnded, setIsGameEnded] = useState(false);
   const [players, setPlayers] = useState<string[]>([]);
 
@@ -83,7 +81,6 @@ export default function PlayerGame() {
   useEffect(() => {
     socket.on('game-started', () => {
       setGameStarted(true);
-      setCountdown(3);
       checkBlackout(calledNumbers);
     });
 
@@ -107,9 +104,6 @@ export default function PlayerGame() {
     socket.on('game-ended', () => {
       setShowDialog(true);
       setIsGameEnded(true);
-      if (countdownIntervalRef.current) {
-        clearInterval(countdownIntervalRef.current);
-      }
     });
 
     return () => {
@@ -150,21 +144,6 @@ export default function PlayerGame() {
     });
   };
 
-  useEffect(() => {
-    if (gameStarted && countdown > 0) {
-      countdownIntervalRef.current = setInterval(() => {
-        setCountdown((prev) => {
-          if (prev === 1) {
-            clearInterval(countdownIntervalRef.current!);
-            return 3;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-
-      return () => clearInterval(countdownIntervalRef.current!);
-    }
-  }, [gameStarted, countdown]);
   return (
     <main className="p-4 w-full max-w-5xl mx-auto space-y-4">
       {winners.length > 0 && (
@@ -204,22 +183,13 @@ export default function PlayerGame() {
         </h1>
       )}
       <div className="text-center mb-4">
-        <div className="text-center mb-4">
-          {isGameEnded ? (
-            <p className="text-xl font-semibold text-red-600">
-              Game has ended.
-            </p>
-          ) : gameStarted ? (
-            <p className="text-xl font-semibold text-gray-700">
-              Next number in: <span className="text-blue-600">{countdown}</span>{' '}
-              second{countdown !== 1 ? 's' : ''}
-            </p>
-          ) : (
-            <p className="text-xl font-semibold text-gray-700">
-              Waiting for game to start...
-            </p>
-          )}
-        </div>
+        <p className="text-xl font-semibold text-gray-700">
+          {isGameEnded
+            ? 'Game has ended.'
+            : gameStarted
+            ? 'Game in progress...'
+            : 'Waiting for game to start...'}
+        </p>
       </div>
       {calledNumbers.length > 0 && (
         <div className="mt-6 w-full max-w-2xl mx-auto">

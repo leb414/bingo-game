@@ -13,6 +13,7 @@ const io = new Server(server, {
 });
 
 let gameStarted = false;
+let gamePaused = false;
 let callInterval = null;
 let allNumbers = [];
 let calledNumbers = [];
@@ -49,6 +50,41 @@ function emitPlayers() {
  */
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
+
+  // Pause game
+  socket.on('pause-game', () => {
+    if (gameStarted) {
+      gamePaused = true;
+      clearInterval(callInterval);
+      io.emit('game-paused');
+      console.log('Game paused');
+    }
+  });
+
+  // Resume game
+  socket.on('resume-game', () => {
+    if (gameStarted && gamePaused) {
+      gamePaused = false;
+      io.emit('game-resumed');
+      callInterval = setInterval(() => {
+        if (
+          allNumbers.length === 0 ||
+          winners.length >= (players.length === 2 ? 1 : 3)
+        ) {
+          clearInterval(callInterval);
+          io.emit('game-ended');
+          gameStarted = false;
+          return;
+        }
+
+        const number = allNumbers.shift();
+        calledNumbers.push(number);
+        io.emit('number-called', number);
+        console.log('Number called:', number);
+      }, 100);
+      console.log('Game resumed');
+    }
+  });
 
   /**
    * Register yung admin socket id para isa lang ang pwedeng magjoin na admin.
