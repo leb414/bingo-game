@@ -89,7 +89,11 @@ io.on('connection', (socket) => {
    * client na nag-coconnect sa server.
    */
   socket.on('get-game-status', () => {
-    socket.emit('game-status', { started: gameStarted });
+    socket.emit('game-status', {
+      started: gameStarted,
+      calledNumbers,
+      winners,
+    });
   });
 
   /**
@@ -98,10 +102,6 @@ io.on('connection', (socket) => {
    */
   socket.on('get-players', () => {
     socket.emit('players-updated', players);
-  });
-
-  socket.on('get-game-status', () => {
-    socket.emit('game-status', { started: gameStarted });
   });
 
   socket.on('player-joined', ({ nickname, cards }) => {

@@ -32,7 +32,7 @@ export default function PlayerGame() {
   const searchParams = useSearchParams();
   const count = parseInt(searchParams.get('cards') || '1');
   const [cards, setCards] = useState<number[][][]>([]);
-  const [called, setCalled] = useState<number[]>([]);
+  const [calledNumbers, setCalledNumbers] = useState<number[]>([]);
   const [countdown, setCountdown] = useState(3);
   const [gameStarted, setGameStarted] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
@@ -75,7 +75,7 @@ export default function PlayerGame() {
 
   useEffect(() => {
     if (cards.length > 0) {
-      checkBlackout(called);
+      checkBlackout(calledNumbers);
     }
   }, [cards]);
 
@@ -83,11 +83,11 @@ export default function PlayerGame() {
     socket.on('game-started', () => {
       setGameStarted(true);
       setCountdown(3);
-      checkBlackout(called);
+      checkBlackout(calledNumbers);
     });
 
     socket.on('number-called', (num) => {
-      setCalled((prev) => {
+      setCalledNumbers((prev) => {
         const updated = [...prev, num];
         setTimeout(() => checkBlackout(updated), 0);
         return updated;
@@ -117,7 +117,21 @@ export default function PlayerGame() {
       socket.off('winner');
       socket.off('game-ended');
     };
-  }, [called]);
+  }, [calledNumbers]);
+
+  useEffect(() => {
+    socket.emit('get-game-status');
+
+    socket.on('game-status', ({ started, calledNumbers, winners }) => {
+      setGameStarted(started);
+      setCalledNumbers(calledNumbers || []);
+      setWinners(winners || []);
+    });
+
+    return () => {
+      socket.off('game-status');
+    };
+  }, []);
 
   const checkBlackout = (calledNumbers: number[]) => {
     cards.forEach((card, i) => {
@@ -200,13 +214,13 @@ export default function PlayerGame() {
           </p>
         )}
       </div>
-      {called.length > 0 && (
+      {calledNumbers.length > 0 && (
         <div className="mt-6 w-full max-w-2xl mx-auto">
           <h2 className="text-2xl font-bold mb-4 text-center">
             Called Numbers
           </h2>
           <div className="flex flex-wrap gap-2 justify-center">
-            {called.map((n, i) => (
+            {calledNumbers.map((n, i) => (
               <span
                 key={i}
                 className="px-2 py-1 bg-blue-500 text-white rounded"
@@ -219,7 +233,7 @@ export default function PlayerGame() {
       )}
       <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
         {cards.map((card, i) => (
-          <BingoCard key={i} numbers={card} called={called} />
+          <BingoCard key={i} numbers={card} called={calledNumbers} />
         ))}
       </div>
 

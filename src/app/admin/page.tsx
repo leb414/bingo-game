@@ -45,11 +45,10 @@ export default function AdminPage() {
       }
     });
 
-    socket.on('game-status', ({ started, calledNumbers }) => {
+    socket.on('game-status', ({ started, calledNumbers, winners }) => {
       setStarted(started);
-      if (started && calledNumbers?.length) {
-        setCalledNumbers(calledNumbers);
-      }
+      setCalledNumbers(calledNumbers || []);
+      setWinners(winners || []);
     });
 
     socket.on('number-called', (number: number) => {
@@ -105,7 +104,11 @@ export default function AdminPage() {
     <main className="p-6 flex items-center justify-center flex-col min-h-screen">
       <h2 className="text-2xl font-bold">Admin Dashboard</h2>
       {!started ? (
-        <Button className="mt-4" onClick={startGame} disabled={players.length === 0}>
+        <Button
+          className="mt-4"
+          onClick={startGame}
+          disabled={players.length === 0}
+        >
           Start Game
         </Button>
       ) : (
