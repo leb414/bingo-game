@@ -149,7 +149,7 @@ io.on('connection', (socket) => {
       calledNumbers.push(number);
       io.emit('number-called', number);
       console.log('Number called:', number);
-    }, 1000);
+    }, 100);
   });
 
   /**
@@ -218,7 +218,7 @@ function endGame() {
   gameStarted = false;
   clearInterval(callInterval);
   callInterval = null;
-  io.emit('game-status', { started: gameStarted });
+  io.emit('game-status', { started: gameStarted, calledNumbers, winners });
   io.emit('game-ended');
 }
 

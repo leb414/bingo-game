@@ -41,6 +41,7 @@ export default function PlayerGame() {
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const [isGameEnded, setIsGameEnded] = useState(false);
   const [players, setPlayers] = useState<string[]>([]);
+
   useEffect(() => {
     socket.on('player-joined', (playerNickname: string) => {
       setPlayers((prevPlayers) => {
@@ -203,16 +204,22 @@ export default function PlayerGame() {
         </h1>
       )}
       <div className="text-center mb-4">
-        {gameStarted ? (
-          <p className="text-xl font-semibold text-gray-700">
-            Next number in: <span className="text-blue-600">{countdown}</span>{' '}
-            second{countdown !== 1 ? 's' : ''}
-          </p>
-        ) : (
-          <p className="text-xl font-semibold text-gray-700">
-            Waiting for game to start...
-          </p>
-        )}
+        <div className="text-center mb-4">
+          {isGameEnded ? (
+            <p className="text-xl font-semibold text-red-600">
+              Game has ended.
+            </p>
+          ) : gameStarted ? (
+            <p className="text-xl font-semibold text-gray-700">
+              Next number in: <span className="text-blue-600">{countdown}</span>{' '}
+              second{countdown !== 1 ? 's' : ''}
+            </p>
+          ) : (
+            <p className="text-xl font-semibold text-gray-700">
+              Waiting for game to start...
+            </p>
+          )}
+        </div>
       </div>
       {calledNumbers.length > 0 && (
         <div className="mt-6 w-full max-w-2xl mx-auto">

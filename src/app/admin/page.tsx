@@ -95,6 +95,7 @@ export default function AdminPage() {
     setCalledNumbers([]);
     setWinners([]);
     setIsGameEnded(false);
+    setStarted(false);
 
     // Navigate back to home
     router.push('/');
@@ -103,7 +104,7 @@ export default function AdminPage() {
   return (
     <main className="p-6 flex items-center justify-center flex-col min-h-screen">
       <h2 className="text-2xl font-bold">Admin Dashboard</h2>
-      {!started ? (
+      {!started && !isGameEnded && (
         <Button
           className="mt-4"
           onClick={startGame}
@@ -111,7 +112,9 @@ export default function AdminPage() {
         >
           Start Game
         </Button>
-      ) : (
+      )}
+
+      {started && (
         <>
           <p className="mt-4">Game in progress... live view soon</p>
           <Button
@@ -144,6 +147,28 @@ export default function AdminPage() {
         </div>
       )}
 
+      {winners.map((winnerName, i) => {
+        const player = players.find((p) => p.nickname === winnerName);
+        return (
+          <div key={i} className="mt-4 bg-white border rounded p-4 shadow">
+            <h3 className="text-lg font-semibold mb-2">
+              Winning Card(s) for #{i + 1}: {winnerName}
+            </h3>
+            <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
+              {player?.cards.map((card, idx) => {
+                const flat = card.flat();
+                const isWinnerCard = flat.every(
+                  (n) => n === 0 || calledNumbers.includes(n)
+                );
+                return isWinnerCard ? (
+                  <BingoCard key={idx} numbers={card} called={calledNumbers} />
+                ) : null;
+              })}
+            </div>
+          </div>
+        );
+      })}
+
       {isGameEnded && (
         <div className="mt-6 w-full max-w-md mx-auto text-center bg-gray-200 p-4 rounded shadow">
           <h2 className="text-xl font-bold text-red-600">Game Over</h2>
@@ -154,29 +179,29 @@ export default function AdminPage() {
         </div>
       )}
 
-      {started && (
-        <>
-          <div className="mt-6 w-full max-w-2xl mx-auto">
-            <h2 className="text-2xl font-bold mb-4">Called Numbers</h2>
-            <div className="grid grid-cols-10 gap-2">
-              {Array.from({ length: 75 }, (_, i) => i + 1).map((num) => {
-                const isCalled = calledNumbers.includes(num);
-                return (
-                  <span
-                    key={num}
-                    className={`px-3 py-2 text-sm font-medium text-center rounded ${
-                      isCalled
-                        ? 'bg-gray-700 text-white'
-                        : 'bg-gray-200 text-gray-800'
-                    }`}
-                  >
-                    {num}
-                  </span>
-                );
-              })}
-            </div>
+      {calledNumbers.length > 0 && (
+        <div className="mt-6 w-full max-w-2xl mx-auto">
+          <h2 className="text-2xl font-bold mb-4 text-center">
+            Called Numbers
+          </h2>
+          <div className="grid grid-cols-10 gap-2">
+            {Array.from({ length: 75 }, (_, i) => i + 1).map((num) => {
+              const isCalled = calledNumbers.includes(num);
+              return (
+                <span
+                  key={num}
+                  className={`px-3 py-2 text-sm font-medium text-center rounded ${
+                    isCalled
+                      ? 'bg-gray-700 text-white'
+                      : 'bg-gray-200 text-gray-800'
+                  }`}
+                >
+                  {num}
+                </span>
+              );
+            })}
           </div>
-        </>
+        </div>
       )}
 
       {players.some((p) => p.cards && p.cards.length > 0) && (
