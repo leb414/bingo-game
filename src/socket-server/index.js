@@ -171,10 +171,7 @@ io.on('connection', (socket) => {
     io.emit('game-started');
 
     callInterval = setInterval(() => {
-      if (
-        allNumbers.length === 0 ||
-        winners.length >= (players.length === 2 ? 1 : 3)
-      ) {
+      if (allNumbers.length === 0) {
         clearInterval(callInterval);
         io.emit('game-ended');
         gameStarted = false;
@@ -202,17 +199,9 @@ io.on('connection', (socket) => {
     if (isWinner && !winners.includes(player.nickname)) {
       winners.push(player.nickname);
       io.emit('winner', player.nickname);
-      console.log(`Winner #${winners.length}: ${player.nickname}`);
+      console.log(`Winner: ${player.nickname}`);
 
-      if (players.length === 2 && winners.length === 1) {
-        io.emit('game-ended');
-        gameStarted = false;
-      }
-
-      const maxWinners = Math.min(3, players.length);
-      if (winners.length >= maxWinners) {
-        endGame();
-      }
+      endGame();
     }
   });
 

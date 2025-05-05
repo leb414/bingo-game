@@ -182,12 +182,6 @@ export default function PlayerGame() {
               </li>
             ))}
           </ul>
-          {players.length > 2 && winners.length < 3 && (
-            <p className="text-sm text-gray-600 mt-2">
-              Waiting for {3 - winners.length} more{' '}
-              {3 - winners.length === 1 ? 'winner' : 'winners'}...
-            </p>
-          )}
         </div>
       )}
 
