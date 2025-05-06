@@ -24,6 +24,10 @@ export default function AdminPage() {
   const [showDialog, setShowDialog] = useState(false);
   const [winners, setWinners] = useState<string[]>([]);
   const [isGameEnded, setIsGameEnded] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [winnerDetails, setWinnerDetails] = useState<
+    { nickname: string; cards: number[][][] }[]
+  >([]);
 
   const startGame = () => {
     socket.emit('start-game');
@@ -33,6 +37,16 @@ export default function AdminPage() {
   const stopGame = () => {
     socket.emit('end-game');
     setStarted(false);
+  };
+
+  const pauseGame = () => {
+    socket.emit('pause-game');
+    setIsPaused(true);
+  };
+
+  const resumeGame = () => {
+    socket.emit('resume-game');
+    setIsPaused(false);
   };
 
   useEffect(() => {
@@ -45,11 +59,10 @@ export default function AdminPage() {
       }
     });
 
-    socket.on('game-status', ({ started, calledNumbers }) => {
+    socket.on('game-status', ({ started, calledNumbers, winners }) => {
       setStarted(started);
-      if (started && calledNumbers?.length) {
-        setCalledNumbers(calledNumbers);
-      }
+      setCalledNumbers(calledNumbers || []);
+      setWinners(winners || []);
     });
 
     socket.on('number-called', (number: number) => {
@@ -66,10 +79,18 @@ export default function AdminPage() {
       setIsGameEnded(true);
     });
 
-    socket.on('winner', (nickname: string) => {
+    socket.on('winner', (data: { nickname: string; cards: number[][][] }) => {
       setWinners((prev) => {
-        if (!prev.includes(nickname)) {
-          return [...prev, nickname];
+        if (!prev.includes(data.nickname)) {
+          return [...prev, data.nickname];
+        }
+        return prev;
+      });
+
+      setWinnerDetails((prev) => {
+        const exists = prev.find((w) => w.nickname === data.nickname);
+        if (!exists) {
+          return [...prev, { nickname: data.nickname, cards: data.cards }];
         }
         return prev;
       });
@@ -88,6 +109,30 @@ export default function AdminPage() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!started || isGameEnded) return;
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+
+    const handlePopState = () => {
+      alert('You cannot leave the game while it is in progress.');
+      window.history.pushState(null, '', window.location.href);
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('popstate', handlePopState);
+
+    window.history.pushState(null, '', window.location.href);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [started, isGameEnded]);
+
   const handleBack = () => {
     socket.emit('reset-game');
 
@@ -96,6 +141,7 @@ export default function AdminPage() {
     setCalledNumbers([]);
     setWinners([]);
     setIsGameEnded(false);
+    setStarted(false);
 
     // Navigate back to home
     router.push('/');
@@ -104,13 +150,40 @@ export default function AdminPage() {
   return (
     <main className="p-6 flex items-center justify-center flex-col min-h-screen">
       <h2 className="text-2xl font-bold">Admin Dashboard</h2>
-      {!started ? (
-        <Button className="mt-4" onClick={startGame} disabled={players.length === 0}>
+      {!started && !isGameEnded && (
+        <Button
+          className="mt-4"
+          onClick={startGame}
+          disabled={players.length === 0}
+        >
           Start Game
         </Button>
-      ) : (
+      )}
+
+      {started && (
         <>
-          <p className="mt-4">Game in progress... live view soon</p>
+          <p className="mt-4">
+            {isPaused
+              ? 'Game is paused...'
+              : 'Game in progress... live view soon'}
+          </p>
+
+          {isPaused ? (
+            <Button
+              className="mt-2 bg-yellow-500 hover:bg-yellow-600"
+              onClick={resumeGame}
+            >
+              Resume Game
+            </Button>
+          ) : (
+            <Button
+              className="mt-2 bg-yellow-500 hover:bg-yellow-600"
+              onClick={pauseGame}
+            >
+              Pause Game
+            </Button>
+          )}
+
           <Button
             className="mt-2 bg-red-600 hover:bg-red-700"
             onClick={stopGame}
@@ -119,26 +192,28 @@ export default function AdminPage() {
           </Button>
         </>
       )}
-
-      {winners.length > 0 && (
-        <div className="mt-6 w-full max-w-md mx-auto bg-green-100 p-4 rounded shadow">
-          <h2 className="text-xl font-bold text-green-800 mb-2">
-            Top Blackout Winners
+      {winnerDetails.length > 0 && (
+        <>
+          <h2 className="text-2xl font-bold text-green-800 mt-8 mb-4">
+            🏆 Top Blackout Winners
           </h2>
-          <ul className="list-disc list-inside text-green-700">
-            {winners.map((winner, i) => (
-              <li key={i}>
-                #{i + 1}: {winner}
-              </li>
-            ))}
-          </ul>
-          {players.length > 2 && winners.length < 3 && (
-            <p className="text-sm text-gray-600 mt-2">
-              Waiting for {3 - winners.length} more{' '}
-              {3 - winners.length === 1 ? 'winner' : 'winners'}...
-            </p>
-          )}
-        </div>
+
+          {winnerDetails.map((winner, i) => (
+            <div
+              key={i}
+              className="mt-6 bg-white border border-green-400 rounded p-4 shadow-lg"
+            >
+              <p className="font-semibold text-green-700">
+                #{i + 1}: {winner.nickname}
+              </p>
+              <div className="mt-2 grid sm:grid-cols-2 md:grid-cols-3 gap-4">
+                {winner.cards.map((card, idx) => (
+                  <BingoCard key={idx} numbers={card} called={calledNumbers} />
+                ))}
+              </div>
+            </div>
+          ))}
+        </>
       )}
 
       {isGameEnded && (
@@ -151,22 +226,29 @@ export default function AdminPage() {
         </div>
       )}
 
-      {started && (
-        <>
-          <div className="mt-6 w-full max-w-2xl mx-auto">
-            <h2 className="text-2xl font-bold mb-4">Called Numbers</h2>
-            <div className="flex flex-wrap gap-2">
-              {calledNumbers.map((n, i) => (
+      {calledNumbers.length > 0 && (
+        <div className="mt-6 w-full max-w-2xl mx-auto">
+          <h2 className="text-2xl font-bold mb-4 text-center">
+            Called Numbers
+          </h2>
+          <div className="grid grid-cols-10 gap-2">
+            {Array.from({ length: 75 }, (_, i) => i + 1).map((num) => {
+              const isCalled = calledNumbers.includes(num);
+              return (
                 <span
-                  key={i}
-                  className="px-2 py-1 bg-blue-500 text-white rounded"
+                  key={num}
+                  className={`px-3 py-2 text-sm font-medium text-center rounded ${
+                    isCalled
+                      ? 'bg-gray-700 text-white'
+                      : 'bg-gray-200 text-gray-800'
+                  }`}
                 >
-                  {n}
+                  {num}
                 </span>
-              ))}
-            </div>
+              );
+            })}
           </div>
-        </>
+        </div>
       )}
 
       {players.some((p) => p.cards && p.cards.length > 0) && (

@@ -13,6 +13,7 @@ const io = new Server(server, {
 });
 
 let gameStarted = false;
+let gamePaused = false;
 let callInterval = null;
 let allNumbers = [];
 let calledNumbers = [];
@@ -49,6 +50,41 @@ function emitPlayers() {
  */
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
+
+  // Pause game
+  socket.on('pause-game', () => {
+    if (gameStarted) {
+      gamePaused = true;
+      clearInterval(callInterval);
+      io.emit('game-paused');
+      console.log('Game paused');
+    }
+  });
+
+  // Resume game
+  socket.on('resume-game', () => {
+    if (gameStarted && gamePaused) {
+      gamePaused = false;
+      io.emit('game-resumed');
+      callInterval = setInterval(() => {
+        if (
+          allNumbers.length === 0 ||
+          winners.length >= (players.length === 2 ? 1 : 3)
+        ) {
+          clearInterval(callInterval);
+          io.emit('game-ended');
+          gameStarted = false;
+          return;
+        }
+
+        const number = allNumbers.shift();
+        calledNumbers.push(number);
+        io.emit('number-called', number);
+        console.log('Number called:', number);
+      }, 100);
+      console.log('Game resumed');
+    }
+  });
 
   /**
    * Register yung admin socket id para isa lang ang pwedeng magjoin na admin.
@@ -89,7 +125,11 @@ io.on('connection', (socket) => {
    * client na nag-coconnect sa server.
    */
   socket.on('get-game-status', () => {
-    socket.emit('game-status', { started: gameStarted });
+    socket.emit('game-status', {
+      started: gameStarted,
+      calledNumbers,
+      winners,
+    });
   });
 
   /**
@@ -98,10 +138,6 @@ io.on('connection', (socket) => {
    */
   socket.on('get-players', () => {
     socket.emit('players-updated', players);
-  });
-
-  socket.on('get-game-status', () => {
-    socket.emit('game-status', { started: gameStarted });
   });
 
   socket.on('player-joined', ({ nickname, cards }) => {
@@ -135,10 +171,7 @@ io.on('connection', (socket) => {
     io.emit('game-started');
 
     callInterval = setInterval(() => {
-      if (
-        allNumbers.length === 0 ||
-        winners.length >= (players.length === 2 ? 1 : 3)
-      ) {
+      if (allNumbers.length === 0) {
         clearInterval(callInterval);
         io.emit('game-ended');
         gameStarted = false;
@@ -149,7 +182,7 @@ io.on('connection', (socket) => {
       calledNumbers.push(number);
       io.emit('number-called', number);
       console.log('Number called:', number);
-    }, 1000);
+    }, 100);
   });
 
   /**
@@ -160,23 +193,21 @@ io.on('connection', (socket) => {
     const player = players.find((p) => p.socketId === socket.id);
     if (!player) return;
 
-    const flat = data.card.flat();
-    const isWinner = flat.every((n) => n === 0 || data.called.includes(n));
+    const winningCards = player.cards.filter((card) =>
+      card.flat().every((n) => n === 0 || data.called.includes(n))
+    );
 
-    if (isWinner && !winners.includes(player.nickname)) {
+    if (winningCards.length > 0 && !winners.includes(player.nickname)) {
       winners.push(player.nickname);
-      io.emit('winner', player.nickname);
-      console.log(`Winner #${winners.length}: ${player.nickname}`);
+      io.emit('winner', {
+        nickname: player.nickname,
+        cards: winningCards,
+      });
+      console.log(
+        `Winner: ${player.nickname} with ${winningCards.length} card(s)`
+      );
 
-      if (players.length === 2 && winners.length === 1) {
-        io.emit('game-ended');
-        gameStarted = false;
-      }
-
-      const maxWinners = Math.min(3, players.length);
-      if (winners.length >= maxWinners) {
-        endGame();
-      }
+      endGame();
     }
   });
 
@@ -218,7 +249,7 @@ function endGame() {
   gameStarted = false;
   clearInterval(callInterval);
   callInterval = null;
-  io.emit('game-status', { started: gameStarted });
+  io.emit('game-status', { started: gameStarted, calledNumbers, winners });
   io.emit('game-ended');
 }
 
