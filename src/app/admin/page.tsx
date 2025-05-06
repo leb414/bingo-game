@@ -25,6 +25,9 @@ export default function AdminPage() {
   const [winners, setWinners] = useState<string[]>([]);
   const [isGameEnded, setIsGameEnded] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const [winnerDetails, setWinnerDetails] = useState<
+    { nickname: string; cards: number[][][] }[]
+  >([]);
 
   const startGame = () => {
     socket.emit('start-game');
@@ -76,10 +79,18 @@ export default function AdminPage() {
       setIsGameEnded(true);
     });
 
-    socket.on('winner', (nickname: string) => {
+    socket.on('winner', (data: { nickname: string; cards: number[][][] }) => {
       setWinners((prev) => {
-        if (!prev.includes(nickname)) {
-          return [...prev, nickname];
+        if (!prev.includes(data.nickname)) {
+          return [...prev, data.nickname];
+        }
+        return prev;
+      });
+
+      setWinnerDetails((prev) => {
+        const exists = prev.find((w) => w.nickname === data.nickname);
+        if (!exists) {
+          return [...prev, { nickname: data.nickname, cards: data.cards }];
         }
         return prev;
       });
@@ -181,43 +192,29 @@ export default function AdminPage() {
           </Button>
         </>
       )}
-
-      {winners.length > 0 && (
-        <div className="mt-6 w-full max-w-md mx-auto bg-green-100 p-4 rounded shadow">
-          <h2 className="text-xl font-bold text-green-800 mb-2">
-            Top Blackout Winners
+      {winnerDetails.length > 0 && (
+        <>
+          <h2 className="text-2xl font-bold text-green-800 mt-8 mb-4">
+            🏆 Top Blackout Winners
           </h2>
-          <ul className="list-disc list-inside text-green-700">
-            {winners.map((winner, i) => (
-              <li key={i}>
-                #{i + 1}: {winner}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
 
-      {winners.map((winnerName, i) => {
-        const player = players.find((p) => p.nickname === winnerName);
-        return (
-          <div key={i} className="mt-4 bg-white border rounded p-4 shadow">
-            <h3 className="text-lg font-semibold mb-2">
-              Winning Card(s) for #{i + 1}: {winnerName}
-            </h3>
-            <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
-              {player?.cards.map((card, idx) => {
-                const flat = card.flat();
-                const isWinnerCard = flat.every(
-                  (n) => n === 0 || calledNumbers.includes(n)
-                );
-                return isWinnerCard ? (
+          {winnerDetails.map((winner, i) => (
+            <div
+              key={i}
+              className="mt-6 bg-white border border-green-400 rounded p-4 shadow-lg"
+            >
+              <p className="font-semibold text-green-700">
+                #{i + 1}: {winner.nickname}
+              </p>
+              <div className="mt-2 grid sm:grid-cols-2 md:grid-cols-3 gap-4">
+                {winner.cards.map((card, idx) => (
                   <BingoCard key={idx} numbers={card} called={calledNumbers} />
-                ) : null;
-              })}
+                ))}
+              </div>
             </div>
-          </div>
-        );
-      })}
+          ))}
+        </>
+      )}
 
       {isGameEnded && (
         <div className="mt-6 w-full max-w-md mx-auto text-center bg-gray-200 p-4 rounded shadow">

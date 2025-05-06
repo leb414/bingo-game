@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { socket } from '@/lib/socket';
 import BingoCard from '@/components/BingoCard';
@@ -39,6 +39,9 @@ export default function PlayerGame() {
   const [winners, setWinners] = useState<string[]>([]);
   const [isGameEnded, setIsGameEnded] = useState(false);
   const [players, setPlayers] = useState<string[]>([]);
+  const [winnerDetails, setWinnerDetails] = useState<
+    { nickname: string; cards: number[][][] }[]
+  >([]);
 
   useEffect(() => {
     socket.on('player-joined', (playerNickname: string) => {
@@ -92,10 +95,18 @@ export default function PlayerGame() {
       });
     });
 
-    socket.on('winner', (nickname: string) => {
+    socket.on('winner', (data: { nickname: string; cards: number[][][] }) => {
       setWinners((prev) => {
-        if (!prev.includes(nickname)) {
-          return [...prev, nickname];
+        if (!prev.includes(data.nickname)) {
+          return [...prev, data.nickname];
+        }
+        return prev;
+      });
+
+      setWinnerDetails((prev) => {
+        const exists = prev.find((w) => w.nickname === data.nickname);
+        if (!exists) {
+          return [...prev, { nickname: data.nickname, cards: data.cards }];
         }
         return prev;
       });
@@ -170,19 +181,28 @@ export default function PlayerGame() {
 
   return (
     <main className="p-4 w-full max-w-5xl mx-auto space-y-4">
-      {winners.length > 0 && (
-        <div className="mt-6 w-full max-w-md mx-auto bg-green-100 p-4 rounded shadow">
-          <h2 className="text-xl font-bold text-green-800 mb-2">
-            Top Blackout Winners
+      {winnerDetails.length > 0 && (
+        <>
+          <h2 className="text-2xl text-center font-bold text-green-800 mt-8 mb-4">
+            🏆 Top Blackout Winners
           </h2>
-          <ul className="list-disc list-inside text-green-700">
-            {winners.map((winner, i) => (
-              <li key={i}>
-                #{i + 1}: {winner}
-              </li>
-            ))}
-          </ul>
-        </div>
+
+          {winnerDetails.map((winner, i) => (
+            <div
+              key={i}
+              className="mt-6 bg-white border border-green-400 rounded p-4 shadow-lg"
+            >
+              <p className="font-semibold text-green-700">
+                #{i + 1}: {winner.nickname}
+              </p>
+              <div className="mt-2 grid sm:grid-cols-2 md:grid-cols-3 gap-4">
+                {winner.cards.map((card, idx) => (
+                  <BingoCard key={idx} numbers={card} called={calledNumbers} />
+                ))}
+              </div>
+            </div>
+          ))}
+        </>
       )}
 
       {isGameEnded && (

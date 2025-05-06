@@ -193,13 +193,19 @@ io.on('connection', (socket) => {
     const player = players.find((p) => p.socketId === socket.id);
     if (!player) return;
 
-    const flat = data.card.flat();
-    const isWinner = flat.every((n) => n === 0 || data.called.includes(n));
+    const winningCards = player.cards.filter((card) =>
+      card.flat().every((n) => n === 0 || data.called.includes(n))
+    );
 
-    if (isWinner && !winners.includes(player.nickname)) {
+    if (winningCards.length > 0 && !winners.includes(player.nickname)) {
       winners.push(player.nickname);
-      io.emit('winner', player.nickname);
-      console.log(`Winner: ${player.nickname}`);
+      io.emit('winner', {
+        nickname: player.nickname,
+        cards: winningCards,
+      });
+      console.log(
+        `Winner: ${player.nickname} with ${winningCards.length} card(s)`
+      );
 
       endGame();
     }
